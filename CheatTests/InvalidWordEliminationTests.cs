@@ -14,6 +14,7 @@ namespace CheatTests
         const string exeFile = "C:\\test\\Cheat.exe";
         const string exeArgumentPattern = "--input " + dictionaryFile + " --letters {0}";
         static TestContext testContextInstance;
+        string outputStream = String.Empty;
 
         [ClassInitialize]
         public static void ClassInit( TestContext context )
@@ -32,6 +33,9 @@ namespace CheatTests
                 Directory.Delete( dictionaryFolder, true );
             }
             Directory.CreateDirectory( dictionaryFolder );
+
+            // clear the output stream
+            outputStream = String.Empty;
         }
     
 
@@ -44,7 +48,7 @@ namespace CheatTests
 
             string consoleOutput;
 
-            RunCheatProgram( "h e l l o", out consoleOutput );
+            RunCheatProgram( "h e l l x x x o x x x x x x x x", out consoleOutput );
 
             testContextInstance.WriteLine( "Validate result count, expecting 1" );
             Assert.IsTrue( ValidateResultCount( 1, consoleOutput ) );
@@ -60,7 +64,7 @@ namespace CheatTests
 
             string consoleOutput;
 
-            RunCheatProgram( "a n o y", out consoleOutput );
+            RunCheatProgram( "a n o x x y x x x x x x x x x x", out consoleOutput );
 
             testContextInstance.WriteLine( "Validate result count, expecting 1" );
             Assert.IsTrue( ValidateResultCount( 1, consoleOutput ) );
@@ -90,16 +94,24 @@ namespace CheatTests
             Process cheatProcess = new Process();
             cheatProcess.StartInfo.UseShellExecute = false;
             cheatProcess.StartInfo.RedirectStandardOutput = true;
+            cheatProcess.StartInfo.RedirectStandardError = true;
             cheatProcess.StartInfo.FileName = exeFile;
             cheatProcess.StartInfo.Arguments = arguments;
+
+            cheatProcess.OutputDataReceived += ( sender, args ) => RecordProcessOutput( args.Data );
+            cheatProcess.ErrorDataReceived += ( sender, args ) => RecordProcessOutput( args.Data );
+
             cheatProcess.Start();
+            cheatProcess.BeginOutputReadLine();
+            cheatProcess.BeginErrorReadLine();
 
-            testContextInstance.WriteLine( "Cheat.exe output:" );
-
-            consoleOutput = cheatProcess.StandardOutput.ReadToEnd();
-            testContextInstance.WriteLine( consoleOutput );
-
+            cheatProcess.WaitForExit( 5000 );
+            
+            // make sure the output threads have also terminated
+            // more info: http://stackoverflow.com/questions/16095292/how-to-avoid-race-condition-between-process-termination-notification-and-standar
             cheatProcess.WaitForExit();
+            
+            consoleOutput = outputStream;
         }
 
         /// <summary>
@@ -115,6 +127,19 @@ namespace CheatTests
                 return true;
             }
             else return false;
+        }
+
+        /// <summary>
+        /// Used to record the console output from the cheat.exe process in the .trx logfile in case anything bad happens
+        /// </summary>
+        /// <param name="output">output stream</param>
+        private void RecordProcessOutput( string output )
+        {
+            if ( output != null )
+            {
+                outputStream += output;
+                Console.WriteLine( output );
+            }
         }
     }
 }

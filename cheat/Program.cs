@@ -11,6 +11,7 @@ namespace Cheat
     {
         static void Main( string[] args )
         {
+            AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionTrapper;
             var cmdLineArgs = new CommandLineArgs();
 
             if ( CommandLine.Parser.Default.ParseArguments( args, cmdLineArgs ) )
@@ -52,9 +53,20 @@ namespace Cheat
 
                 newDictionary = newDictionary.Except( wordsToRemove ).ToList<string>();
 
-                Console.WriteLine( "Ending count: {0}", newDictionary.Count() );
 
+                // now that we've knocked down the combinations enough to be halfway efficient, brute force the rest
+                GridSearch search = new GridSearch( cmdLineArgs.Letters );
+                newDictionary = newDictionary.Where( x => search.TryFindWord( x ) ).ToList<string>();
+
+                Console.WriteLine( "Ending count: {0}", newDictionary.Count() );
+                Environment.Exit( 0 );
             }
+        }
+
+        static void UnhandledExceptionTrapper( object sender, UnhandledExceptionEventArgs args )
+        {
+            Console.WriteLine( args.ExceptionObject.ToString() );
+            Environment.Exit( 1 );
         }
     }
 }
